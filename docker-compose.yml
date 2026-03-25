@@ -5,7 +5,7 @@ services:
       - "8019:8012"
     environment:
       BEARER_TOKEN: demo-secret-token
-      OLLAMA_EMBED_URL: https://research.neu.edu.vn/ollama/api/embed
+      OLLAMA_EMBED_URL: http://10.2.13.58:11434/api/embed
       EMBED_MODEL: qwen3-embedding:8b
       QDRANT_HOST: host.docker.internal
       QDRANT_PORT: 8013
