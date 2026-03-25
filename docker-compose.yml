@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - "8099:8012"
+      - "8019:8012"
     environment:
       BEARER_TOKEN: demo-secret-token
       OLLAMA_EMBED_URL: https://research.neu.edu.vn/ollama/api/embed
