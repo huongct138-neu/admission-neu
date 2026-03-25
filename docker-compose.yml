@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8099:8012"
+    environment:
+      BEARER_TOKEN: demo-secret-token
+      OLLAMA_EMBED_URL: https://research.neu.edu.vn/ollama/api/embed
+      EMBED_MODEL: qwen3-embedding:8b
+      QDRANT_HOST: host.docker.internal
+      QDRANT_PORT: 8013
+      QDRANT_COLLECTION: Admission
+      TOP_K: 5
+      MIN_SCORE: 0.3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
