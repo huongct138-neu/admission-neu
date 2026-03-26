@@ -5,8 +5,21 @@ services:
       - "8099:8012"
     environment:
       BEARER_TOKEN: demo-secret-token
-      OLLAMA_EMBED_URL: https://research.neu.edu.vn/ollama/api/embed
+
+      # khi deploy thì dùng địa chỉ IP
+      # OLLAMA_EMBED_URL:  http://10.2.13.58:11434/api/embed
+      
+      # nếu chạy trên máy local thì dùng tên miền
+      OLLAMA_EMBED_URL: https://research.neu.edu.vn/ollama/api/embed  
       EMBED_MODEL: qwen3-embedding:8b
+      
+      # khi deploy thì dùng địa chỉ IP
+      # LLM_BASE_URL: http://10.2.13.58:11434
+
+      # local thì dùng tên miền
+      LLM_BASE_URL: https://research.neu.edu.vn/ollama
+      LLM_MODEL: qwen3:8b
+
       QDRANT_HOST: host.docker.internal
       QDRANT_PORT: 8013
       QDRANT_COLLECTION: Admission

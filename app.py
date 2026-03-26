@@ -22,6 +22,9 @@ BEARER_TOKEN = os.getenv("BEARER_TOKEN", "demo-secret-token")
 OLLAMA_EMBED_URL = os.getenv("OLLAMA_EMBED_URL", "https://research.neu.edu.vn/ollama/api/embed")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "qwen3-embedding:8b")
 
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://research.neu.edu.vn/ollama")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen3:8b")
+
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "admission_knowledge")
@@ -53,6 +56,7 @@ METADATA = {
         "Các tổ hợp xét tuyển của ĐHKTQD?",
         "Các phương thức xét tuyển là gì?",
         "Học phí của các chương trình đào tạo tại ĐHKTQD?",
+        "Thí sinh được đăng ký tối đa bao nhiêu nguyện vọng"
     ],
     "provided_data_types": [
         {
@@ -68,6 +72,23 @@ METADATA = {
     "status": "active",
 }
 
+SYSTEM_PROMPT = """Bạn là trợ lý tuyển sinh thông minh.
+
+QUY TẮC:
+- Chỉ trả lời dựa trên thông tin được cung cấp.
+- Không suy đoán, không thêm kiến thức ngoài.
+- Nếu không đủ thông tin, trả lời đúng 1 câu:
+  "Theo các tài liệu được cung cấp, không có thông tin để trả lời câu hỏi này."
+
+PHONG CÁCH TRẢ LỜI:
+- Viết tự nhiên như ChatGPT
+- Rõ ràng, dễ hiểu
+- Ưu tiên chia thành các mục nếu phù hợp
+- Có thể dùng:
+  - tiêu đề (##)
+  - bullet points (-)
+- Không nhắc tới dữ liệu hay nguồn
+"""
 
 class HistoryItem(BaseModel):
     role: str
@@ -150,6 +171,50 @@ def search_qdrant(query_vector: list[float], limit: int = 5) -> list[dict]:
     return results
 
 
+def build_context_block(docs: list[dict]) -> str:
+    if not docs:
+        return ""
+
+    texts = []
+    for doc in docs:
+        content = doc.get("content", "").strip()
+        if content:
+            texts.append(content)
+
+    return "\n\n".join(texts)
+
+def call_llm(question: str, context_block: str) -> str:
+    url = LLM_BASE_URL.rstrip("/") + "/api/chat"
+    user_prompt = f"""Thông tin:
+
+    {context_block}
+
+    ---
+    Câu hỏi: {question}
+
+    Yêu cầu:
+    - Trả lời tự nhiên như ChatGPT
+    - Nếu có nhiều ý → chia bullet
+    - Nếu phù hợp → thêm tiêu đề (##)
+    - Không lặp lại dữ liệu thô
+    - Không giải thích lan man
+
+    Trả lời:"""
+    
+    payload = {
+        "model": LLM_MODEL,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        "stream": False,
+    }
+
+    resp = requests.post(url, json=payload, timeout=120)
+    resp.raise_for_status()
+
+    return resp.json()["message"]["content"]
+
 @app.get(f"{API_PREFIX}/metadata")
 def get_metadata():
     return METADATA
@@ -204,59 +269,91 @@ def get_data(
 
 
 @app.post(f"{API_PREFIX}/ask")
-def ask_agent(payload: AskRequest):
+@app.post(f"{API_PREFIX}/ask")
+def ask_agent(req: AskRequest):
     start = time.time()
 
     try:
-        query_vector = embed_text(payload.prompt)
-        retrieved = search_qdrant(query_vector, limit=TOP_K)
-    except requests.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Embedding service error: {str(e)}")
+        # 1. Embed câu hỏi
+        query_vector = embed_text(req.prompt)
+
+        # 2. Search Qdrant
+        docs = search_qdrant(query_vector, limit=TOP_K)
+
+        # 3. Build context
+        context_block = build_context_block(docs)
+
+        # 4. Gọi LLM
+        answer = call_llm(req.prompt, context_block)
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ask pipeline error: {str(e)}")
-
-    lines = ["## Trả lời", ""]
-    if retrieved:
-        lines.append(f"Bạn hỏi: **{payload.prompt}**")
-        lines.append("")
-        lines.append("Dưới đây là các nội dung gần nhất tìm được trong kho dữ liệu:")
-        lines.append("")
-
-        for i, item in enumerate(retrieved, start=1):
-            lines.append(f"### {i}. {item['title']}")
-            lines.append(item["content"] or "Không có nội dung tóm tắt.")
-            lines.append(f"- Điểm tương đồng: `{item['score']:.4f}`")
-            if item["source"]:
-                lines.append(f"- Nguồn: `{item['source']}`")
-            lines.append("")
-    else:
-        lines.append(f"Chưa tìm thấy dữ liệu phù hợp cho câu hỏi: **{payload.prompt}**.")
-        lines.append("")
-        lines.append("## Gợi ý")
-        lines.append("- Hãy hỏi cụ thể hơn về hồ sơ nhập học, phương thức xét tuyển, ngành học hoặc học phí.")
-
-    attachments = []
-    if payload.context and payload.context.extra_data:
-        documents = payload.context.extra_data.get("document", [])
-        for doc_url in documents:
-            attachments.append({
-                "type": "document",
-                "url": doc_url,
-            })
-
-    elapsed_ms = int((time.time() - start) * 1000)
+        raise HTTPException(status_code=500, detail=f"Ask error: {str(e)}")
 
     return {
-        "session_id": payload.session_id,
+        "session_id": req.session_id,
         "status": "success",
-        "content_markdown": "\n".join(lines),
+        "content_markdown": answer,
         "meta": {
-            "model": payload.model_id,
-            "response_time_ms": elapsed_ms,
-            "tokens_used": 0,
-            "retrieved_count": len(retrieved),
-            "embed_model": EMBED_MODEL,
-            "qdrant_collection": QDRANT_COLLECTION,
+            "model": LLM_MODEL,
+            "retrieved_count": len(docs),
         },
-        "attachments": attachments,
+        "attachments": [],
     }
+
+
+# def ask_agent(payload: AskRequest):
+#     start = time.time()
+
+#     try:
+#         query_vector = embed_text(payload.prompt)
+#         retrieved = search_qdrant(query_vector, limit=TOP_K)
+#     except requests.HTTPError as e:
+#         raise HTTPException(status_code=502, detail=f"Embedding service error: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Ask pipeline error: {str(e)}")
+
+#     lines = ["## Trả lời", ""]
+#     if retrieved:
+#         lines.append(f"Bạn hỏi: **{payload.prompt}**")
+#         lines.append("")
+#         lines.append("Dưới đây là các nội dung gần nhất tìm được trong kho dữ liệu:")
+#         lines.append("")
+
+#         for i, item in enumerate(retrieved, start=1):
+#             lines.append(f"### {i}. {item['title']}")
+#             lines.append(item["content"] or "Không có nội dung tóm tắt.")
+#             lines.append(f"- Điểm tương đồng: `{item['score']:.4f}`")
+#             if item["source"]:
+#                 lines.append(f"- Nguồn: `{item['source']}`")
+#             lines.append("")
+#     else:
+#         lines.append(f"Chưa tìm thấy dữ liệu phù hợp cho câu hỏi: **{payload.prompt}**.")
+#         lines.append("")
+#         lines.append("## Gợi ý")
+#         lines.append("- Hãy hỏi cụ thể hơn về hồ sơ nhập học, phương thức xét tuyển, ngành học hoặc học phí.")
+
+#     attachments = []
+#     if payload.context and payload.context.extra_data:
+#         documents = payload.context.extra_data.get("document", [])
+#         for doc_url in documents:
+#             attachments.append({
+#                 "type": "document",
+#                 "url": doc_url,
+#             })
+
+#     elapsed_ms = int((time.time() - start) * 1000)
+
+#     return {
+#         "session_id": payload.session_id,
+#         "status": "success",
+#         "content_markdown": "\n".join(lines),
+#         "meta": {
+#             "model": payload.model_id,
+#             "response_time_ms": elapsed_ms,
+#             "tokens_used": 0,
+#             "retrieved_count": len(retrieved),
+#             "embed_model": EMBED_MODEL,
+#             "qdrant_collection": QDRANT_COLLECTION,
+#         },
+#         "attachments": attachments,
+#     }
