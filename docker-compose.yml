@@ -2,15 +2,19 @@ services:
   web:
     build: .
     ports:
-      - "8099:8012"
+      - "8019:8012"
     environment:
       BEARER_TOKEN: demo-secret-token
+<<<<<<< HEAD
 
       # khi deploy thì dùng địa chỉ IP
       # OLLAMA_EMBED_URL:  http://10.2.13.58:11434/api/embed
       
       # nếu chạy trên máy local thì dùng tên miền
       OLLAMA_EMBED_URL: https://research.neu.edu.vn/ollama/api/embed  
+=======
+      OLLAMA_EMBED_URL: http://10.2.13.58:11434/api/embed
+>>>>>>> 97f01b938fe66611b272b1c0103e0d6e851a397c
       EMBED_MODEL: qwen3-embedding:8b
       
       # khi deploy thì dùng địa chỉ IP
