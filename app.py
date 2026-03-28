@@ -56,7 +56,7 @@ METADATA = {
         "Các tổ hợp xét tuyển của ĐHKTQD?",
         "Các phương thức xét tuyển của ĐHKTQD?",
         "Học phí của các chương trình đào tạo tại ĐHKTQD?",
-        "Thí sinh được đăng ký tối đa bao nhiêu nguyện vọng"
+        "Thí sinh được đăng ký tối đa bao nhiêu nguyện vọng?"
     ],
     "provided_data_types": [
         {
@@ -68,7 +68,7 @@ METADATA = {
             "description": "Cấu hình cơ bản của admission agent",
         },
     ],
-    "contact": "admission-support@neu.edu.vn",
+    "contact": "kcntt@neu.edu.vn",
     "status": "active",
 }
 
