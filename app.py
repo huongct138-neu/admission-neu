@@ -35,8 +35,8 @@ MIN_SCORE = float(os.getenv("MIN_SCORE", "0.3"))
 LAST_UPDATED = datetime.now(timezone.utc).isoformat()
 
 METADATA = {
-    "name": "NEU Admission Assistant",
-    "description": "Agent hỗ trợ tư vấn tuyển sinh, giải đáp ngành học, phương thức xét tuyển, học phí và hồ sơ nhập học",
+    "name": "Thông tin tuyển sinh",
+    "description": "Agent hỗ trợ tư vấn tuyển sinh, phương thức xét tuyển, học phí và hồ sơ nhập học",
     "version": "1.0.0",
     "developer": "NEU AI Team",
     "capabilities": [
