@@ -54,7 +54,7 @@ METADATA = {
     ],
     "sample_prompts": [
         "Các tổ hợp xét tuyển của ĐHKTQD?",
-        "Các phương thức xét tuyển là gì?",
+        "Các phương thức xét tuyển của ĐHKTQD?",
         "Học phí của các chương trình đào tạo tại ĐHKTQD?",
         "Thí sinh được đăng ký tối đa bao nhiêu nguyện vọng"
     ],
