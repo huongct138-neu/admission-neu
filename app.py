@@ -77,12 +77,12 @@ SYSTEM_PROMPT = """Bạn là trợ lý tuyển sinh thông minh.
 QUY TẮC:
 - Chỉ trả lời dựa trên thông tin được cung cấp.
 - Không suy đoán, không thêm kiến thức ngoài.
+- Không tự đoán các từ viết tắt, các thuật ngữ viết tắt
 - Nếu không đủ thông tin, trả lời đúng 1 câu:
   "Theo các tài liệu được cung cấp, không có thông tin để trả lời câu hỏi này."
 
 PHONG CÁCH TRẢ LỜI:
-- Viết tự nhiên như ChatGPT
-- Rõ ràng, dễ hiểu
+- Viết tự nhiên, Rõ ràng, dễ hiểu
 - Ưu tiên chia thành các mục nếu phù hợp
 - Có thể dùng:
   - tiêu đề (##)
@@ -185,7 +185,7 @@ def build_context_block(docs: list[dict]) -> str:
 
 def call_llm(question: str, context_block: str) -> str:
     url = LLM_BASE_URL.rstrip("/") + "/api/chat"
-    user_prompt = f"""Thông tin:
+    user_prompt = f"""Thông tin tham khảo - - CHI dua vao day:
 
     {context_block}
 
@@ -193,11 +193,12 @@ def call_llm(question: str, context_block: str) -> str:
     Câu hỏi: {question}
 
     Yêu cầu:
-    - Trả lời tự nhiên như ChatGPT
+    - Trả lời tự nhiên như ChatGPT (chi dua tren context tren)
     - Nếu có nhiều ý → chia bullet
     - Nếu phù hợp → thêm tiêu đề (##)
     - Không lặp lại dữ liệu thô
     - Không giải thích lan man
+    - Không lấy dữ liệu ngoài
 
     Trả lời:"""
     
