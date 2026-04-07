@@ -84,7 +84,7 @@ QUY TẮC:
 PHONG CÁCH TRẢ LỜI:
 - Viết tự nhiên, Rõ ràng, dễ hiểu
 - Ưu tiên chia thành các mục nếu phù hợp
-- Khi hiển thị các con số như mã ngành, chỉ tiêu KHÔNG được phép thêm phần thập phân ở cuối.
+- Khi hiển thị các con số như mã ngành, chỉ tiêu phải giữ nguyên định dạng số đó.
 - Có thể dùng:
   - tiêu đề (##)
   - bullet points (-)
